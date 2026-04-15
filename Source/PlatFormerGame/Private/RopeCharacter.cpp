@@ -128,7 +128,8 @@ void ARopeCharacter::Move(const FInputActionValue& Value)
 		FVector Right = GetActorRightVector();
 		
 		FVector MoveOffset = MoveInput.X * Right + MoveInput.Y * Foward;
-		AddActorLocalOffset(MoveOffset);
+		//충돌 감지(bSweep = true) 하면서 Offset 방향으로 Speed의 속도로 이번 프레임에 해당하는 만큼 움직여라
+		AddActorLocalOffset(MoveOffset * MoveSpeed * GetWorld()->GetDeltaSeconds(), true); 
 	}
 }
 void ARopeCharacter::Look(const FInputActionValue& Value)

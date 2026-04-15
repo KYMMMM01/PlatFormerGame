@@ -16,7 +16,7 @@ class PLATFORMERGAME_API ARopePlayerController : public APlayerController
 	
 	//Enhanced Input
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
-	UInputMappingContext* IMC_Default;
+	UInputMappingContext* IMC_Character;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* IA_Move;

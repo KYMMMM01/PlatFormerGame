@@ -17,9 +17,9 @@ void ARopePlayerController::BeginPlay()
 		if (UEnhancedInputLocalPlayerSubsystem* SubSystem = 
 		   LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>())
 		{
-			if (IMC_Default)
+			if (IMC_Character)
 			{
-				SubSystem->AddMappingContext(IMC_Default, 0); //0은 가장 높은 우선순위
+				SubSystem->AddMappingContext(IMC_Character, 0); //0은 가장 높은 우선순위
 			}
 		}
 	}

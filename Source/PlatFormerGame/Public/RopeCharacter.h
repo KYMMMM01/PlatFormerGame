@@ -35,7 +35,7 @@ public:
 	
 	//이동 관련
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float MoveSpeed = 900.f; //이동 속도(기본적으로 달리는 상태)
+	float MoveSpeed = 900.f; //이동 속도(기본적으로 달리는 상태)	
  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float LookSensitivity = 0.5f; //마우스 감도

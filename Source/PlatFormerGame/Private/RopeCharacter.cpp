@@ -7,9 +7,9 @@
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
-#include "RopePlayerController.h"
-#include "EnhancedInputSubsystems.h"
 #include "InputActionValue.h"
+#include "RopePlayerController.h"
+
 
 ARopeCharacter::ARopeCharacter()
 {
@@ -127,14 +127,21 @@ void ARopeCharacter::Move(const FInputActionValue& Value)
 		FVector Foward = GetActorForwardVector();
 		FVector Right = GetActorRightVector();
 		
-		FVector MoveOffset = MoveInput.X * Right + MoveInput.Y * Foward;
+		FVector MoveOffset = Right * MoveInput.X + Foward * MoveInput.Y;
 		//충돌 감지(bSweep = true) 하면서 Offset 방향으로 Speed의 속도로 이번 프레임에 해당하는 만큼 움직여라
-		AddActorLocalOffset(MoveOffset * MoveSpeed * GetWorld()->GetDeltaSeconds(), true); 
+		AddActorLocalOffset(-MoveOffset * MoveSpeed * GetWorld()->GetDeltaSeconds(), true); 
 	}
 }
 void ARopeCharacter::Look(const FInputActionValue& Value)
 {
-		
+	const FVector2D LookInput = Value.Get<FVector2D>();
+	//상하 (Pitch)
+	FRotator CurrentArm = SpringArmComp->GetRelativeRotation();
+	float NewPitch = FMath::Clamp(
+		CurrentArm.Pitch + LookInput.Y * LookSensitivity, -60.f, 30.f);
+	SpringArmComp->SetRelativeRotation(FRotator(NewPitch, 0.0f, 0.0f));
+	//좌우 (Yaw)
+	AddActorLocalRotation(FRotator(0.0f, LookInput.Y * LookSensitivity, 0.0f));
 }
 void ARopeCharacter::StartJump(const FInputActionValue& Value)
 {

@@ -59,8 +59,10 @@ public:
 	float RopeMinLength = 1000.f;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float GrappleTraceDistance = 4000.f;
-	
-	
+
+	//리스폰
+	UFUNCTION(BlueprintCallable, Category = "Game")
+	void Respawn(const FVector& NewLocation);
 	
 protected:
 	float VerticalVelocity = 0.f; //현재 수직 속도
@@ -77,6 +79,7 @@ protected:
 	
 	void ApplyGravity(float DeltaTime);
 	void CheckGrounded();
+	void CheckKillZone();
 	
 	UFUNCTION()
 	void Move(const FInputActionValue& Value);
@@ -97,4 +100,5 @@ protected:
 	void StopGrapple();
 	UFUNCTION()
 	void ApplyGrapplePhysics(float DeltaTime);
+	
 };

@@ -5,9 +5,9 @@
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
-//#include "MaterialHLSLTree.h"
 #include "RopePlayerController.h"
-
+#include "RopeGameMode.h"
+#include "Kismet/GameplayStatics.h"
 
 ARopeCharacter::ARopeCharacter()
 {
@@ -56,6 +56,8 @@ void ARopeCharacter::Tick(float DeltaTime)
 		CheckGrounded();
 		ApplyGravity(DeltaTime);
 	}
+	
+	CheckKillZone();
 }
 
 void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -311,4 +313,26 @@ void ARopeCharacter::ApplyGrapplePhysics(float DeltaTime)
 
 	float RadialSpeed = FVector::DotProduct(GrappleVelocity, Dir);
 	GrappleVelocity -= Dir * RadialSpeed;
+}
+
+//---------------------------------낙사, 리스폰 관련----------------------------------------
+void ARopeCharacter::CheckKillZone()
+{
+	if (ARopeGameMode* GM = Cast<ARopeGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (GetActorLocation().Z < GM->KillZ)
+			GM->OnPlayerFell();
+	}
+}
+
+void ARopeCharacter::Respawn(const FVector& NewLocation)
+{
+	bIsGrappling     = false;
+	GrappleVelocity  = FVector::ZeroVector;
+	GrapplePoint     = FVector::ZeroVector;
+	VerticalVelocity = 0.f;
+	bIsGrounded      = false;
+
+	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorRotation(FRotator(0.f, 0.f, 0.f));
 }

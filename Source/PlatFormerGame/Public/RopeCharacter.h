@@ -5,7 +5,7 @@
 #include "GameFramework/Pawn.h"
 #include "RopeCharacter.generated.h"
 
-class ARopePlayerController;  // 추가
+class ARopePlayerController; 
 class UCapsuleComponent;
 class USkeletalMeshComponent;
 class USpringArmComponent;
@@ -41,23 +41,35 @@ public:
 	float LookSensitivity = 1.0f; //마우스 감도
  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float JumpSpeed = 700.f; //점프 속도
+	float JumpRange = 1000.f; //점프 정도
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float DashSpeed = 2000.f; //대쉬 속도
  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float GravityAccel = -980.f; //중력 가속도
+	float GravityAccel = -1960.f; //중력
  
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float GroundCheckDistance = 100.f; //지면 감지 거리
+	
+	//로프 관련
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float RopeMaxLength = 2000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float RopeMinLength = 1000.f;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float GrappleTraceDistance = 4000.f;
 	
 	
 	
 protected:
 	float VerticalVelocity = 0.f; //현재 수직 속도
-	bool  bIsGrounded = false; //땅에 닿아있는지 여부
+	bool bIsGrounded = false; //땅에 닿아있는지 여부
+	
 	bool bIsGrappling = false;
+	FVector GrapplePoint    = FVector::ZeroVector;
+	float CurrentRopeLength = 0.f;
+	FVector GrappleVelocity = FVector::ZeroVector;
 	
 	virtual void BeginPlay() override;
 	virtual void Tick(float DeltaTime) override;
@@ -79,4 +91,10 @@ protected:
 	UFUNCTION()
 	void StopDash(const FInputActionValue& Value);
 	
+	UFUNCTION()
+	void StartGrapple();
+	UFUNCTION()
+	void StopGrapple();
+	UFUNCTION()
+	void ApplyGrapplePhysics(float DeltaTime);
 };

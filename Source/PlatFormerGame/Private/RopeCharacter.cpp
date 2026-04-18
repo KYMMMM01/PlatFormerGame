@@ -1,13 +1,11 @@
 #include "RopeCharacter.h"
-
-#include <rapidjson/document.h>
-
 #include "Components/CapsuleComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Camera/CameraComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
+//#include "MaterialHLSLTree.h"
 #include "RopePlayerController.h"
 
 
@@ -48,7 +46,16 @@ void ARopeCharacter::BeginPlay()
 void ARopeCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
+	if (bIsGrappling)
+	{
+		ApplyGrapplePhysics(DeltaTime);	
+	}
+	else
+	{
+		CheckGrounded();
+		ApplyGravity(DeltaTime);
+	}
 }
 
 void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -113,10 +120,30 @@ void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 				&ARopeCharacter::StopDash
 				);
 			}
+			
+			if (PlayerController->IA_Grapple)
+			{
+				EnhancedInput->BindAction(
+					PlayerController->IA_Grapple,
+					ETriggerEvent::Started,
+					this,
+					&ARopeCharacter::StartGrapple
+					);
+			}
+			if (PlayerController->IA_Grapple)
+			{
+				EnhancedInput->BindAction(
+					PlayerController->IA_Grapple,
+					ETriggerEvent::Completed,
+					this,
+					&ARopeCharacter::StopGrapple
+					);
+			}
 		}
 	}
 }
 
+//--------------------------------이동 관련---------------------------------------
 void ARopeCharacter::Move(const FInputActionValue& Value)
 {
 	if (!Controller) return;
@@ -147,7 +174,19 @@ void ARopeCharacter::Look(const FInputActionValue& Value)
 }
 void ARopeCharacter::StartJump(const FInputActionValue& Value)
 {
-		
+	//그래플링 중 점프
+	if (bIsGrappling)
+	{
+		VerticalVelocity = GrappleVelocity.Z + JumpRange;
+		bIsGrappling = false;
+		GrappleVelocity = FVector::ZeroVector;
+		bIsGrounded = false;
+	}
+	else if (bIsGrounded)
+	{
+		VerticalVelocity = JumpRange;
+		bIsGrounded = false;
+	}
 }
 void ARopeCharacter::StopJump(const FInputActionValue& Value)
 {
@@ -164,10 +203,112 @@ void ARopeCharacter::StopDash(const FInputActionValue& Value)
 
 void ARopeCharacter::ApplyGravity(float DeltaTime)
 {
-	
+	if (!bIsGrounded)
+	{
+		VerticalVelocity += GravityAccel * DeltaTime;
+	}
+	else
+	{
+		VerticalVelocity = 0.f;
+	}
+
+	//수직 이동 적용
+	FHitResult Hit;
+	AddActorWorldOffset(FVector(0.f, 0.f, VerticalVelocity * DeltaTime), true, &Hit);
+
+	//충돌 시 초기화
+	if (Hit.IsValidBlockingHit())
+	{
+		if (VerticalVelocity < 0.f) bIsGrounded = true;
+		VerticalVelocity = 0.f;
+	}
 }
 
 void ARopeCharacter::CheckGrounded()
 {
+	FVector Start = GetActorLocation();
+	FVector End = Start - FVector(0.f, 0.f, GroundCheckDistance);
+
+	FHitResult Hit;
+	FCollisionQueryParams Params;
+	Params.AddIgnoredActor(this);
+
+	bool bHit = GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params);
+	bIsGrounded = bHit && (VerticalVelocity <= 0.f);
+}
+
+//----------------------------------로프 관련-------------------------------------------
+void ARopeCharacter::StartGrapple()
+{
+    //카메라 방향으로 LineTrace
+    FVector Start = CameraComp->GetComponentLocation();
+    FVector End = Start + CameraComp->GetForwardVector() * GrappleTraceDistance;
+
+    FHitResult Hit;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+
+    if (GetWorld()->LineTraceSingleByChannel(Hit, Start, End, ECC_Visibility, Params))
+    {
+        GrapplePoint = Hit.ImpactPoint;
+
+        //자동 길이 조정
+        float Distance = FVector::Distance(GetActorLocation(), GrapplePoint);
+        CurrentRopeLength = FMath::Clamp(Distance, RopeMinLength, RopeMaxLength);
+
+        bIsGrappling = true;
+        bIsGrounded  = false;
+    	
+        GrappleVelocity  = FVector(0.f, 0.f, VerticalVelocity);
+        VerticalVelocity = 0.f;
+    }
+}
+
+void ARopeCharacter::StopGrapple()
+{
+    if (!bIsGrappling) return;
 	
+    VerticalVelocity = GrappleVelocity.Z;
+    bIsGrappling     = false;
+    GrappleVelocity  = FVector::ZeroVector;
+}
+
+//스윙
+void ARopeCharacter::ApplyGrapplePhysics(float DeltaTime)
+{
+    GrappleVelocity.Z += GravityAccel * DeltaTime;
+	
+    FHitResult Hit;
+    AddActorWorldOffset(GrappleVelocity * DeltaTime, true, &Hit);
+    if (Hit.IsValidBlockingHit())
+    {
+    	if (GrappleVelocity.Z < 0.f)
+    	{
+    		bIsGrounded = true;
+    		StopGrapple();
+    		return;
+    	}
+    	GrappleVelocity = FVector::ZeroVector;
+    	return;
+    }
+	
+	FVector ToChar = GetActorLocation() - GrapplePoint;
+	float Dist = ToChar.Size();
+	if (Dist < 1.f) return;
+
+	FVector Dir = ToChar / Dist;
+
+	//충돌 체크
+	FHitResult ConstraintHit;
+	SetActorLocation(GrapplePoint + Dir * CurrentRopeLength, true, &ConstraintHit);
+
+	if (ConstraintHit.IsValidBlockingHit())
+	{
+		bIsGrounded = GrappleVelocity.Z < 0.f;
+		StopGrapple();
+		return;
+	}
+
+	float RadialSpeed = FVector::DotProduct(GrappleVelocity, Dir);
+	GrappleVelocity -= Dir * RadialSpeed;
 }

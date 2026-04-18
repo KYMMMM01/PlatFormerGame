@@ -3,7 +3,7 @@
 
 
 ARopePlayerController::ARopePlayerController()
-	: IA_Move(nullptr), IA_Look(nullptr), IA_Jump(nullptr), IA_Dash(nullptr)
+	: IA_Move(nullptr), IA_Look(nullptr), IA_Jump(nullptr), IA_Dash(nullptr), IA_Grapple(nullptr)
 {
 	
 }

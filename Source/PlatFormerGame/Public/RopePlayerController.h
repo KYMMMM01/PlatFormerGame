@@ -30,6 +30,9 @@ class PLATFORMERGAME_API ARopePlayerController : public APlayerController
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* IA_Dash;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* IA_Grapple;
+	
 protected:
 	virtual void BeginPlay() override;
 	

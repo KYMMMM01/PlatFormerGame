@@ -10,12 +10,12 @@ ARopeGameMode::ARopeGameMode()
 	DefaultPawnClass = ARopeCharacter::StaticClass();
 	PlayerControllerClass = ARopePlayerController::StaticClass();
 }
-
+ 
 void ARopeGameMode::BeginPlay()
 {
 	Super::BeginPlay();
  
-	//플레이어 시작 위치 기억 (리스폰 때 사용)
+	//플레이어 시작 위치(리스폰 때 사용)
 	if (APawn* Player = UGameplayStatics::GetPlayerPawn(this, 0))
 	{
 		PlayerStartLocation = Player->GetActorLocation();
@@ -43,9 +43,19 @@ void ARopeGameMode::OnLevelCleared()
 	CurrentState = ERopeGameState::Cleared;
 	OnGameStateChanged.Broadcast(CurrentState);
  
-	//클리어 시 입력 비활성 + 마우스 커서 노출
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
+		// 클리어 위젯 표시
+		if (ClearWidgetClass)
+		{
+			ClearWidget = CreateWidget<UUserWidget>(PC, ClearWidgetClass);
+			if (ClearWidget)
+			{
+				ClearWidget->AddToViewport();
+			}
+		}
+ 
+		// 입력 비활성
 		PC->SetPause(true);
 		PC->bShowMouseCursor = true;
 		PC->SetInputMode(FInputModeUIOnly());
@@ -59,9 +69,22 @@ void ARopeGameMode::OnPlayerFell()
 	CurrentState = ERopeGameState::GameOver;
 	OnGameStateChanged.Broadcast(CurrentState);
  
-	// 지정 시간 후 자동 리스폰
-	FTimerHandle RespawnTimer;
-	GetWorldTimerManager().SetTimer(RespawnTimer, this, &ARopeGameMode::RespawnPlayer, RespawnDelay, false);
+	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
+	{
+		//게임 오버
+		if (GameOverWidgetClass)
+		{
+			GameOverWidget = CreateWidget<UUserWidget>(PC, GameOverWidgetClass);
+			if (GameOverWidget)
+			{
+				GameOverWidget->AddToViewport();
+			}
+		}
+ 
+		// 마우스 커서 노출, UI 입력
+		PC->bShowMouseCursor = true;
+		PC->SetInputMode(FInputModeUIOnly());
+	}
 }
  
 void ARopeGameMode::RespawnPlayer()
@@ -76,6 +99,6 @@ void ARopeGameMode::RespawnPlayer()
  
 void ARopeGameMode::RestartLevel()
 {
-	// 현재 레벨 재로드
+	//현재 레벨 재시작
 	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
 }

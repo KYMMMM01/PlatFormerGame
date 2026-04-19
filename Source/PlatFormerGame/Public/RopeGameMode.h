@@ -25,7 +25,7 @@ public:
  
 	//낙사 기준 높이
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Game")
-	float KillZ = -2000.f;
+	float KillZ = -2000.0f;
  
 	//리스폰 위치
 	UPROPERTY(BlueprintReadOnly, Category = "Game")

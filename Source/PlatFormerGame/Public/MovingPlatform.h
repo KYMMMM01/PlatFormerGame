@@ -38,4 +38,4 @@ protected:
 	
 	//이동 방향
 	int32 DirectionSign = 1;
-};
+}; 

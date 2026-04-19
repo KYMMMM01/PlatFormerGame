@@ -33,7 +33,7 @@ void ARopeGameMode::BeginPlay()
 	}
  
 	CurrentState = ERopeGameState::Playing;
-	OnGameStateChanged(CurrentState);
+	OnGameStateChanged.Broadcast(CurrentState);
 }
  
 void ARopeGameMode::OnLevelCleared()
@@ -41,7 +41,7 @@ void ARopeGameMode::OnLevelCleared()
 	if (CurrentState != ERopeGameState::Playing) return;
  
 	CurrentState = ERopeGameState::Cleared;
-	OnGameStateChanged(CurrentState);
+	OnGameStateChanged.Broadcast(CurrentState);
  
 	//클리어 시 입력 비활성 + 마우스 커서 노출
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
@@ -57,7 +57,7 @@ void ARopeGameMode::OnPlayerFell()
 	if (CurrentState != ERopeGameState::Playing) return;
  
 	CurrentState = ERopeGameState::GameOver;
-	OnGameStateChanged(CurrentState);
+	OnGameStateChanged.Broadcast(CurrentState);
  
 	// 지정 시간 후 자동 리스폰
 	FTimerHandle RespawnTimer;
@@ -71,7 +71,7 @@ void ARopeGameMode::RespawnPlayer()
 		Player->Respawn(PlayerStartLocation);
 	}
 	CurrentState = ERopeGameState::Playing;
-	OnGameStateChanged(CurrentState);
+	OnGameStateChanged.Broadcast(CurrentState);
 }
  
 void ARopeGameMode::RestartLevel()

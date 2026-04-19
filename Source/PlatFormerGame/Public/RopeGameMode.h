@@ -10,6 +10,8 @@ enum class ERopeGameState : uint8
 	Playing, Cleared, GameOver
 };
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnGameStateChangedSignature, ERopeGameState, NewState);
+
 UCLASS()
 class PLATFORMERGAME_API ARopeGameMode : public AGameMode
 {
@@ -57,8 +59,8 @@ public:
 	void RestartLevel();
  
 	//UI가 구독할 수 있는 이벤트
-	UFUNCTION(BlueprintImplementableEvent, Category = "UI")
-	void OnGameStateChanged(ERopeGameState NewState);
+	UPROPERTY(BlueprintAssignable, Category = "UI")
+	FOnGameStateChangedSignature OnGameStateChanged;
  
 protected:
 	virtual void BeginPlay() override;

@@ -5,11 +5,8 @@
 #include "RotatingPlatform.generated.h"
 
 class UStaticMeshComponent;
+class USceneComponent;
 
-
-//매 프레임 지정된 속도로 회전하는 플랫폼.
-//로프 그래플링 타겟, 시각적 장애물, 기믹용으로 활용.
- 
 UCLASS()
 class PLATFORMERGAME_API ARotatingPlatform : public AActor
 {
@@ -18,10 +15,14 @@ class PLATFORMERGAME_API ARotatingPlatform : public AActor
 public:
 	ARotatingPlatform();
 
+	//회전의 중심이 되는 Scene Root
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	USceneComponent* PivotRoot;
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UStaticMeshComponent* PlatformMesh;
 
-	//초당 회전 속도 (Pitch, Yaw, Roll)
+	//초당 회전 속도 (Pitch, Yaw, Roll) - 단위 deg/s
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rotation")
 	FRotator RotationRate = FRotator(0.f, 45.f, 0.f);
 

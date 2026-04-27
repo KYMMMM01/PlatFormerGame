@@ -8,28 +8,37 @@
 #include "RopePlayerController.h"
 #include "RopeGameMode.h"
 #include "Kismet/GameplayStatics.h"
+#include "DrawDebugHelpers.h"
+
 
 ARopeCharacter::ARopeCharacter()
 {
 	PrimaryActorTick.bCanEverTick = true;
-	
+
 	CapsuleComp = CreateDefaultSubobject<UCapsuleComponent>(FName("CapsuleComp"));
 	SetRootComponent(CapsuleComp);
 	CapsuleComp->SetCapsuleHalfHeight(88.f);
 	CapsuleComp->SetCapsuleRadius(35.f);
-	CapsuleComp->SetSimulatePhysics(false); //코드로 직접 제어
-	
+	CapsuleComp->SetSimulatePhysics(false); 
+
+	//콜리전
+	CapsuleComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	CapsuleComp->SetCollisionObjectType(ECC_Pawn);
+	CapsuleComp->SetCollisionResponseToAllChannels(ECR_Block);
+	CapsuleComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
+	CapsuleComp->SetGenerateOverlapEvents(true);
+
 	SkeletalMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(FName("SkeletalMeshComp"));
 	SkeletalMeshComp->SetupAttachment(CapsuleComp);
 	SkeletalMeshComp->SetSimulatePhysics(false);
 	SkeletalMeshComp->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	SkeletalMeshComp->SetRelativeLocation(FVector(0.f, 0.f, -88.f));
-	
+
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(FName("SpringArmComp"));
 	SpringArmComp->SetupAttachment(CapsuleComp);
 	SpringArmComp->TargetArmLength = 400.f;
 	SpringArmComp->bUsePawnControlRotation = false;
-	
+
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(FName("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
@@ -38,26 +47,53 @@ ARopeCharacter::ARopeCharacter()
 void ARopeCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	SetActorRotation(FRotator(0.f, 0.f, 0.f));
+
+	//AnimBP용 속도 계산 초기값
+	PreviousLocation = GetActorLocation();
 }
 
 
 void ARopeCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	
+
 	if (bIsGrappling)
 	{
-		ApplyGrapplePhysics(DeltaTime);	
+		ApplyGrapplePhysics(DeltaTime);
+
+		//로프
+		DrawDebugLine(
+			GetWorld(),
+			GetActorLocation(),
+			GrapplePoint,
+			FColor::Yellow,
+			false,   
+			0.f,     
+			0,       
+			4.0f
+			);
 	}
 	else
 	{
 		CheckGrounded();
 		ApplyGravity(DeltaTime);
 	}
+	UpdateDash(DeltaTime);
+	CheckKillZ();
 	
-	CheckKillZone();
+	//수평(XY) 이동 속도
+	const FVector CurrentLocation = GetActorLocation();
+	const FVector Delta = CurrentLocation - PreviousLocation;
+	const FVector HorizontalDelta(Delta.X, Delta.Y, 0.f);
+	CurrentSpeed = (DeltaTime > KINDA_SMALL_NUMBER)
+		? HorizontalDelta.Size() / DeltaTime
+		: 0.f;
+	PreviousLocation = CurrentLocation;
+
+	//공중 상태
+	bIsInAir = !bIsGrounded && !bIsGrappling;
 }
 
 void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -108,7 +144,7 @@ void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			{
 				EnhancedInput->BindAction(
 				PlayerController->IA_Dash,
-				ETriggerEvent::Triggered,
+				ETriggerEvent::Started,
 				this,
 				&ARopeCharacter::StartDash
 				);
@@ -117,12 +153,12 @@ void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			{
 				EnhancedInput->BindAction(
 				PlayerController->IA_Dash,
-				ETriggerEvent::Triggered,
+				ETriggerEvent::Completed,
 				this,
 				&ARopeCharacter::StopDash
 				);
 			}
-			
+
 			if (PlayerController->IA_Grapple)
 			{
 				EnhancedInput->BindAction(
@@ -148,31 +184,31 @@ void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 //--------------------------------이동 관련---------------------------------------
 void ARopeCharacter::Move(const FInputActionValue& Value)
 {
-	if (!Controller) return;
-	
+	if (!Controller) return;	
+
 	const FVector2D MoveInput = Value.Get<FVector2D>();
 	if (!FMath::IsNearlyZero(MoveInput.X) || !FMath::IsNearlyZero(MoveInput.Y))
-	{	
+	{
 		FVector Foward = GetActorForwardVector();
 		FVector Right = GetActorRightVector();
-		
+
 		FVector MoveOffset = Right * MoveInput.X + Foward * MoveInput.Y;
 		//충돌 감지(bSweep = true) 하면서 Offset 방향으로 Speed의 속도로 이번 프레임에 해당하는 만큼 움직여라
-		AddActorWorldOffset(MoveOffset * MoveSpeed * GetWorld()->GetDeltaSeconds(), true); 
+		AddActorWorldOffset(MoveOffset * MoveSpeed * GetWorld()->GetDeltaSeconds(), true);
 	}
 }
 void ARopeCharacter::Look(const FInputActionValue& Value)
 {
 	const FVector2D LookInput = Value.Get<FVector2D>();
-	
-	//좌우 (Yaw)
+
+	//좌우(Yaw)
 	AddActorLocalRotation(FRotator(0.0f, LookInput.X * LookSensitivity, 0.0f));
-	
-	//상하 (Pitch)
+
+	//상하(Pitch)
 	FRotator CurrentArm = SpringArmComp->GetRelativeRotation();
-	float NewPitch = FMath::Clamp(CurrentArm.Pitch - LookInput.Y * LookSensitivity, -60.f, 30.f);
+	float NewPitch = FMath::Clamp(CurrentArm.Pitch - LookInput.Y * LookSensitivity, -80.f, 80.f);
 	SpringArmComp->SetRelativeRotation(FRotator(NewPitch, 0.0f, 0.0f));
-	
+
 }
 void ARopeCharacter::StartJump(const FInputActionValue& Value)
 {
@@ -192,15 +228,58 @@ void ARopeCharacter::StartJump(const FInputActionValue& Value)
 }
 void ARopeCharacter::StopJump(const FInputActionValue& Value)
 {
-		
+
 }
 void ARopeCharacter::StartDash(const FInputActionValue& Value)
 {
-		
+	if (!bIsGrappling) return;
+	if (DashCooldownRemaining > 0.f) return;
+
+	//액터 정면(수평)
+	FVector Forward = GetActorForwardVector();
+	Forward.Z = 0.f;
+	Forward = Forward.GetSafeNormal();
+	if (Forward.IsNearlyZero()) return;
+	
+	const FVector ToChar = GetActorLocation() - GrapplePoint;
+	const FVector RopeDir = ToChar.GetSafeNormal();
+	FVector TangentDir = Forward - RopeDir * FVector::DotProduct(Forward, RopeDir);
+	TangentDir = TangentDir.GetSafeNormal();
+	
+	if (TangentDir.IsNearlyZero())
+	{
+		TangentDir = Forward;
+	}
+	
+	GrappleVelocity += TangentDir * DashSpeed;
+
+	bIsDashing = true;
+	DashTimeRemaining = DashDuration;
+	DashCooldownRemaining = DashCooldown;
+	DashDirection = TangentDir;
 }
 void ARopeCharacter::StopDash(const FInputActionValue& Value)
 {
-		
+
+}
+
+void ARopeCharacter::UpdateDash(float DeltaTime)
+{
+	//쿨다운
+	if (DashCooldownRemaining > 0.f)
+	{
+		DashCooldownRemaining = FMath::Max(0.f, DashCooldownRemaining - DeltaTime);
+	}
+
+	if (bIsDashing)
+	{
+		DashTimeRemaining -= DeltaTime;
+		if (DashTimeRemaining <= 0.f)
+		{
+			bIsDashing = false;
+			DashTimeRemaining = 0.f;
+		}
+	}
 }
 
 void ARopeCharacter::ApplyGravity(float DeltaTime)
@@ -214,7 +293,7 @@ void ARopeCharacter::ApplyGravity(float DeltaTime)
 		VerticalVelocity = 0.f;
 	}
 
-	//수직 이동 적용
+	//수직 이동 
 	FHitResult Hit;
 	AddActorWorldOffset(FVector(0.f, 0.f, VerticalVelocity * DeltaTime), true, &Hit);
 
@@ -239,6 +318,34 @@ void ARopeCharacter::CheckGrounded()
 	bIsGrounded = bHit && (VerticalVelocity <= 0.f);
 }
 
+//----------------------------------낙사/리스폰--------------------------------------
+void ARopeCharacter::CheckKillZ()
+{
+	if (ARopeGameMode* GM = Cast<ARopeGameMode>(UGameplayStatics::GetGameMode(this)))
+	{
+		if (GetActorLocation().Z < GM->KillZ)
+		{
+			GM->OnPlayerFell();
+		}
+	}
+}
+
+void ARopeCharacter::Respawn(const FVector& NewLocation)
+{
+	//상태 초기화
+	bIsGrappling       = false;
+	GrappleVelocity    = FVector::ZeroVector;
+	GrapplePoint       = FVector::ZeroVector;
+	GrappleActor       = nullptr;
+	GrappleLocalOffset = FVector::ZeroVector;
+	VerticalVelocity   = 0.f;
+	bIsGrounded        = false;
+
+	//위치 이동
+	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
+	SetActorRotation(FRotator(0.f, 0.f, 0.f));
+}
+
 //----------------------------------로프 관련-------------------------------------------
 void ARopeCharacter::StartGrapple()
 {
@@ -254,13 +361,25 @@ void ARopeCharacter::StartGrapple()
     {
         GrapplePoint = Hit.ImpactPoint;
 
+        //히트된 Actor 저장
+        GrappleActor = Hit.GetActor();
+        if (GrappleActor)
+        {
+            //월드 히트 지점을 해당 Actor 로컬 좌표계로 역변환해 저장
+            GrappleLocalOffset = GrappleActor->GetActorTransform().InverseTransformPosition(Hit.ImpactPoint);
+        }
+        else
+        {
+            GrappleLocalOffset = FVector::ZeroVector;
+        }
+
         //자동 길이 조정
         float Distance = FVector::Distance(GetActorLocation(), GrapplePoint);
         CurrentRopeLength = FMath::Clamp(Distance, RopeMinLength, RopeMaxLength);
 
         bIsGrappling = true;
         bIsGrounded  = false;
-    	
+
         GrappleVelocity  = FVector(0.f, 0.f, VerticalVelocity);
         VerticalVelocity = 0.f;
     }
@@ -269,17 +388,26 @@ void ARopeCharacter::StartGrapple()
 void ARopeCharacter::StopGrapple()
 {
     if (!bIsGrappling) return;
-	
+
     VerticalVelocity = GrappleVelocity.Z;
     bIsGrappling     = false;
     GrappleVelocity  = FVector::ZeroVector;
+	
+    GrappleActor       = nullptr;
+    GrappleLocalOffset = FVector::ZeroVector;
 }
 
 //스윙
 void ARopeCharacter::ApplyGrapplePhysics(float DeltaTime)
 {
+    //움직이는 플랫폼 추적
+    if (GrappleActor)
+    {
+        GrapplePoint = GrappleActor->GetActorTransform().TransformPosition(GrappleLocalOffset);
+    }
+
     GrappleVelocity.Z += GravityAccel * DeltaTime;
-	
+
     FHitResult Hit;
     AddActorWorldOffset(GrappleVelocity * DeltaTime, true, &Hit);
     if (Hit.IsValidBlockingHit())
@@ -287,52 +415,30 @@ void ARopeCharacter::ApplyGrapplePhysics(float DeltaTime)
     	if (GrappleVelocity.Z < 0.f)
     	{
     		bIsGrounded = true;
-    		StopGrapple();
-    		return;
     	}
     	GrappleVelocity = FVector::ZeroVector;
     	return;
     }
-	
+
 	FVector ToChar = GetActorLocation() - GrapplePoint;
 	float Dist = ToChar.Size();
 	if (Dist < 1.f) return;
 
 	FVector Dir = ToChar / Dist;
 
-	//충돌 체크
+	//로프 길이 제한: SetActorLocation 대신 AddActorWorldOffset으로 Sweep 확실히 적용
+	FVector DesiredLocation = GrapplePoint + Dir * CurrentRopeLength;
+	FVector Delta = DesiredLocation - GetActorLocation();
 	FHitResult ConstraintHit;
-	SetActorLocation(GrapplePoint + Dir * CurrentRopeLength, true, &ConstraintHit);
+	AddActorWorldOffset(Delta, true, &ConstraintHit);
 
 	if (ConstraintHit.IsValidBlockingHit())
 	{
 		bIsGrounded = GrappleVelocity.Z < 0.f;
-		StopGrapple();
+		GrappleVelocity = FVector::ZeroVector;
 		return;
 	}
 
 	float RadialSpeed = FVector::DotProduct(GrappleVelocity, Dir);
 	GrappleVelocity -= Dir * RadialSpeed;
-}
-
-//---------------------------------낙사, 리스폰 관련----------------------------------------
-void ARopeCharacter::CheckKillZone()
-{
-	if (ARopeGameMode* GM = Cast<ARopeGameMode>(UGameplayStatics::GetGameMode(this)))
-	{
-		if (GetActorLocation().Z < GM->KillZ)
-			GM->OnPlayerFell();
-	}
-}
-
-void ARopeCharacter::Respawn(const FVector& NewLocation)
-{
-	bIsGrappling     = false;
-	GrappleVelocity  = FVector::ZeroVector;
-	GrapplePoint     = FVector::ZeroVector;
-	VerticalVelocity = 0.f;
-	bIsGrounded      = false;
-
-	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
-	SetActorRotation(FRotator(0.f, 0.f, 0.f));
 }

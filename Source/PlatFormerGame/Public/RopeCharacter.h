@@ -1,6 +1,5 @@
 #pragma once
 
-
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
 #include "RopeCharacter.generated.h"
@@ -10,6 +9,7 @@ class UCapsuleComponent;
 class USkeletalMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
+class UStaticMeshComponent;
 struct FInputActionValue;
 
 UCLASS()
@@ -31,6 +31,15 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	UCameraComponent* CameraComp;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* RopeMesh;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	UStaticMeshComponent* HookMesh;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	FName HandSocketName = TEXT("RightHand");
 
 
 	//이동 관련
@@ -94,15 +103,15 @@ public:
 protected:
 	float VerticalVelocity = 0.f; //현재 수직 속도
 	
-	FVector PreviousLocation = FVector::ZeroVector;
+	FVector PreviousLocation = FVector::ZeroVector; //이전 위치
 	
-	FVector GrapplePoint    = FVector::ZeroVector;
+	FVector GrapplePoint = FVector::ZeroVector; //로프가 닿는 위치
 	float CurrentRopeLength = 0.f;
 	FVector GrappleVelocity = FVector::ZeroVector;
 
-	float DashTimeRemaining     = 0.f;   //남은 대쉬 지속 시간
+	float DashTimeRemaining = 0.f;   //남은 대쉬 지속 시간
 	float DashCooldownRemaining = 0.f;   //남은 쿨다운
-	FVector DashDirection       = FVector::ZeroVector; //대쉬 시작 시 고정한 방향
+	FVector DashDirection = FVector::ZeroVector; //대쉬 시작 시 고정한 방향
 	
 	//움직이는 플랫폼에 로프를 건 경우, 해당 Actor를 추적해 매 프레임 GrapplePoint를 따라가게 함
 	UPROPERTY()
@@ -118,6 +127,7 @@ protected:
 	void ApplyGravity(float DeltaTime);
 	void CheckGrounded();
 	void UpdateDash(float DeltaTime);
+	void UpdateHangPose(float DeltaTime);
 	
 	//낙사 체크
 	void CheckKillZ();

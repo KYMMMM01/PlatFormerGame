@@ -27,21 +27,41 @@ ARopeCharacter::ARopeCharacter()
 	CapsuleComp->SetCollisionResponseToAllChannels(ECR_Block);
 	CapsuleComp->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 	CapsuleComp->SetGenerateOverlapEvents(true);
-
+	
+	//스켈레탈 메쉬
 	SkeletalMeshComp = CreateDefaultSubobject<USkeletalMeshComponent>(FName("SkeletalMeshComp"));
 	SkeletalMeshComp->SetupAttachment(CapsuleComp);
 	SkeletalMeshComp->SetSimulatePhysics(false);
 	SkeletalMeshComp->SetRelativeRotation(FRotator(0.f, -90.f, 0.f));
 	SkeletalMeshComp->SetRelativeLocation(FVector(0.f, 0.f, -88.f));
-
+	
+	//스프링암
 	SpringArmComp = CreateDefaultSubobject<USpringArmComponent>(FName("SpringArmComp"));
 	SpringArmComp->SetupAttachment(CapsuleComp);
 	SpringArmComp->TargetArmLength = 400.f;
 	SpringArmComp->bUsePawnControlRotation = false;
-
+	
+	//카메라
 	CameraComp = CreateDefaultSubobject<UCameraComponent>(FName("CameraComp"));
 	CameraComp->SetupAttachment(SpringArmComp, USpringArmComponent::SocketName);
 	CameraComp->bUsePawnControlRotation = false;
+	
+	//로프 케이블
+	RopeMesh = CreateDefaultSubobject<UStaticMeshComponent>(FName("RopeMesh"));
+	RopeMesh->SetupAttachment(CapsuleComp);
+	RopeMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	RopeMesh->SetVisibility(false);
+	RopeMesh->SetUsingAbsoluteLocation(true);
+	RopeMesh->SetUsingAbsoluteRotation(true);
+	RopeMesh->SetUsingAbsoluteScale(true);
+
+	//갈고리 메쉬
+	HookMesh = CreateDefaultSubobject<UStaticMeshComponent>(FName("HookMesh"));
+	HookMesh->SetupAttachment(CapsuleComp);
+	HookMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	HookMesh->SetVisibility(false);
+	HookMesh->SetUsingAbsoluteLocation(true);
+	HookMesh->SetUsingAbsoluteRotation(true);
 }
 
 void ARopeCharacter::BeginPlay()
@@ -62,25 +82,49 @@ void ARopeCharacter::Tick(float DeltaTime)
 	if (bIsGrappling)
 	{
 		ApplyGrapplePhysics(DeltaTime);
+		
+		FVector HandLoc = GetActorLocation();
+		if (SkeletalMeshComp && SkeletalMeshComp->DoesSocketExist(HandSocketName))
+		{
+			HandLoc = SkeletalMeshComp->GetSocketLocation(HandSocketName);
+		}
 
 		//로프
-		DrawDebugLine(
-			GetWorld(),
-			GetActorLocation(),
-			GrapplePoint,
-			FColor::Yellow,
-			false,   
-			0.f,     
-			0,       
-			4.0f
-			);
+		if (RopeMesh)
+		{
+			const FVector ToGrapple = GrapplePoint - HandLoc;
+			const float Distance = ToGrapple.Size();
+
+			if (Distance > KINDA_SMALL_NUMBER)
+			{
+				RopeMesh->SetWorldLocation((HandLoc + GrapplePoint) * 0.5f);
+				
+				const FQuat AlignZ = FQuat::FindBetweenNormals(FVector::UpVector, ToGrapple.GetSafeNormal());
+				RopeMesh->SetWorldRotation(AlignZ);
+				
+				RopeMesh->SetWorldScale3D(FVector(0.03f, 0.03f, Distance / 100.f));
+			}
+		}
+
+		//갈고리
+		if (HookMesh)
+		{
+			HookMesh->SetWorldLocation(GrapplePoint);
+			const FVector ToChar = GetActorLocation() - GrapplePoint;
+			if (!ToChar.IsNearlyZero())
+			{
+				HookMesh->SetWorldRotation(ToChar.Rotation());
+			}
+		}
 	}
 	else
 	{
 		CheckGrounded();
 		ApplyGravity(DeltaTime);
+		
 	}
 	UpdateDash(DeltaTime);
+	UpdateHangPose(DeltaTime);
 	CheckKillZ();
 	
 	//수평(XY) 이동 속도
@@ -340,7 +384,20 @@ void ARopeCharacter::Respawn(const FVector& NewLocation)
 	GrappleLocalOffset = FVector::ZeroVector;
 	VerticalVelocity   = 0.f;
 	bIsGrounded        = false;
+	bIsDashing            = false;            
+	DashTimeRemaining     = 0.f;               
+	DashCooldownRemaining = 0.f;               
+	DashDirection         = FVector::ZeroVector;
 
+	if (RopeMesh)
+	{
+		RopeMesh->SetVisibility(false);
+	}
+	if (HookMesh)
+	{
+		HookMesh->SetVisibility(false);
+	}
+	
 	//위치 이동
 	SetActorLocation(NewLocation, false, nullptr, ETeleportType::TeleportPhysics);
 	SetActorRotation(FRotator(0.f, 0.f, 0.f));
@@ -382,6 +439,16 @@ void ARopeCharacter::StartGrapple()
 
         GrappleVelocity  = FVector(0.f, 0.f, VerticalVelocity);
         VerticalVelocity = 0.f;
+    	
+    	if (RopeMesh)
+    	{
+    		RopeMesh->SetVisibility(true);
+    	}
+    	if (HookMesh)
+    	{
+    		HookMesh->SetWorldLocation(GrapplePoint);
+    		HookMesh->SetVisibility(true);
+    	}
     }
 }
 
@@ -395,6 +462,15 @@ void ARopeCharacter::StopGrapple()
 	
     GrappleActor       = nullptr;
     GrappleLocalOffset = FVector::ZeroVector;
+	
+	if (RopeMesh)
+	{
+		RopeMesh->SetVisibility(false);
+	}
+	if (HookMesh)
+	{
+		HookMesh->SetVisibility(false);
+	}
 }
 
 //스윙
@@ -441,4 +517,38 @@ void ARopeCharacter::ApplyGrapplePhysics(float DeltaTime)
 
 	float RadialSpeed = FVector::DotProduct(GrappleVelocity, Dir);
 	GrappleVelocity -= Dir * RadialSpeed;
+}
+
+void ARopeCharacter::UpdateHangPose(float DeltaTime)
+{
+	if (!SkeletalMeshComp) return;
+	
+	const float InterpSpeed = 8.f;
+ 
+	if (bIsGrappling)
+	{
+		const FVector AnchorDir = (GrapplePoint - GetActorLocation()).GetSafeNormal();
+		if (AnchorDir.IsNearlyZero()) return;
+		
+		const float LeanAmount = 0.3f;
+		const FVector BlendedUp = FMath::Lerp(FVector::UpVector, AnchorDir, LeanAmount).GetSafeNormal();
+		
+		//메쉬가 정면을 보던 방향(액터 Forward)을 유지하면서, "위"가 로프 쪽을 향하도록 회전 구성.
+		const FRotator TargetWorldRot = FRotationMatrix::MakeFromZY(BlendedUp, GetActorForwardVector()).Rotator();
+ 
+		const FRotator CurrentWorldRot = SkeletalMeshComp->GetComponentRotation();
+		const FRotator NewWorldRot = FMath::RInterpTo(CurrentWorldRot, TargetWorldRot, DeltaTime, InterpSpeed);
+ 
+		SkeletalMeshComp->SetWorldRotation(NewWorldRot);
+	}
+	else
+	{
+		//그래플 끝나면 원래 로컬 회전으로 복귀
+		const FRotator BaseLocal(0.f, -90.f, 0.f);
+		const FRotator CurrentLocal = SkeletalMeshComp->GetRelativeRotation();
+		const FRotator NewLocal =
+			FMath::RInterpTo(CurrentLocal, BaseLocal, DeltaTime, InterpSpeed);
+ 
+		SkeletalMeshComp->SetRelativeRotation(NewLocal);
+	}
 }

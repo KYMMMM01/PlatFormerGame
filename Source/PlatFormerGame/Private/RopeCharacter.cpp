@@ -169,7 +169,7 @@ void ARopeCharacter::Tick(float DeltaTime)
 	//공중 상태
 	bIsInAir = !bIsGrounded && !bIsGrappling;
 	
-	//발자국 (지상 + 일정 속도 + 로프/비행 중 아님)
+	//발자국 사운드
 	const float FootInterval = AudioLibrary ? AudioLibrary->FootstepInterval : 0.3f;
 	if (bIsGrounded && CurrentSpeed > 50.f && !bIsGrappling && !bIsHookFlying)
 	{
@@ -192,7 +192,7 @@ void ARopeCharacter::Tick(float DeltaTime)
 		FootstepTimer = 0.f;
 	}
 
-	//Land 감지
+	//Land 감지 (착지 사운드)
 	if (!bWasGrounded && bIsGrounded && AudioLibrary && AudioLibrary->Land)
 	{
 		UGameplayStatics::PlaySoundAtLocation(this, AudioLibrary->Land, GetActorLocation());

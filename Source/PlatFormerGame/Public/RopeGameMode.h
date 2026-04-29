@@ -4,6 +4,9 @@
 #include "GameFramework/GameMode.h"
 #include "RopeGameMode.generated.h"
 
+class UAudioLibrary;
+class UAudioComponent;
+
 UENUM(BlueprintType)
 enum class ERopeGameState : uint8
 {
@@ -55,24 +58,32 @@ public:
  
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UUserWidget* ClearWidget = nullptr;
+	
+	//오디오 라이브러리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<UAudioLibrary> AudioLibrary = nullptr;
+
+	//클리어 BGM 재생 컴포넌트
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> ClearBGMComp = nullptr;
  
 	//골 지점 도달 시 호출
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void OnLevelCleared();
  
-	// 플레이어 낙사 시 호출
+	//플레이어 낙사 시 호출
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void OnPlayerFell();
  
-	// 플레이어 리스폰
+	//플레이어 리스폰
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void RespawnPlayer();
  
-	// 레벨 재시작 (클리어/게임오버 화면에서 버튼으로 호출)
+	//레벨 재시작 (클리어/게임오버 화면에서 버튼으로 호출)
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void RestartLevel();
  
-	// UI가 구독할 수 있는 이벤트 디스패처 (UMG에서 Bind Event로 연결)
+	//UI가 구독할 수 있는 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "UI")
 	FOnGameStateChangedSignature OnGameStateChanged;
  

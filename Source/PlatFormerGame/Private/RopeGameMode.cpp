@@ -4,6 +4,10 @@
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 #include "TimerManager.h"
+#include "AudioLibrary.h"
+#include "Components/AudioComponent.h"
+#include "Sound/SoundBase.h"
+
  
 ARopeGameMode::ARopeGameMode()
 {
@@ -20,7 +24,7 @@ void ARopeGameMode::BeginPlay()
 	{
 		PlayerStartLocation = Player->GetActorLocation();
 	}
- 
+	
 	//HUD 위젯 생성
 	if (HUDWidgetClass)
 	{
@@ -45,7 +49,7 @@ void ARopeGameMode::OnLevelCleared()
  
 	if (APlayerController* PC = UGameplayStatics::GetPlayerController(this, 0))
 	{
-		// 클리어 위젯 표시
+		//클리어 위젯 표시
 		if (ClearWidgetClass)
 		{
 			ClearWidget = CreateWidget<UUserWidget>(PC, ClearWidgetClass);
@@ -54,8 +58,13 @@ void ARopeGameMode::OnLevelCleared()
 				ClearWidget->AddToViewport();
 			}
 		}
+		
+		if (AudioLibrary && AudioLibrary->ClearBGM)
+		{
+			ClearBGMComp = UGameplayStatics::SpawnSound2D(this, AudioLibrary->ClearBGM);
+		}
  
-		// 입력 비활성
+		//입력 비활성
 		PC->SetPause(true);
 		PC->bShowMouseCursor = true;
 		PC->SetInputMode(FInputModeUIOnly());
@@ -80,8 +89,13 @@ void ARopeGameMode::OnPlayerFell()
 				GameOverWidget->AddToViewport();
 			}
 		}
- 
-		// 마우스 커서 노출, UI 입력
+ 		
+ 		if (AudioLibrary && AudioLibrary->GameOver)
+        {
+        	UGameplayStatics::PlaySound2D(this, AudioLibrary->GameOver);
+        }
+        
+		//마우스 커서 노출, UI 입력
 		PC->bShowMouseCursor = true;
 		PC->SetInputMode(FInputModeUIOnly());
 	}

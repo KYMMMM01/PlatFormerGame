@@ -1,6 +1,9 @@
 #include "MainMenuGameMode.h"
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "AudioLibrary.h"
+#include "Components/AudioComponent.h"
+#include "Sound/SoundBase.h"
 
 AMainMenuGameMode::AMainMenuGameMode()
 {
@@ -28,5 +31,10 @@ void AMainMenuGameMode::BeginPlay()
 	{
 		PC->bShowMouseCursor = true;
 		PC->SetInputMode(FInputModeUIOnly());
+	}
+	
+	if (AudioLibrary && AudioLibrary->Title)
+	{
+		TitleBGMComp = UGameplayStatics::SpawnSound2D(this, AudioLibrary->Title);
 	}
 }

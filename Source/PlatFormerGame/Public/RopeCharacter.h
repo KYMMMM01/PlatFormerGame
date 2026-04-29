@@ -10,6 +10,7 @@ class USkeletalMeshComponent;
 class USpringArmComponent;
 class UCameraComponent;
 class UStaticMeshComponent;
+class UAudioLibrary;
 struct FInputActionValue;
 
 UCLASS()
@@ -42,6 +43,10 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Rope")
 	FName HandSocketName = TEXT("RightHand");
+	
+	//오디오 라이브러리
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<UAudioLibrary> AudioLibrary = nullptr;
 
 
 	//이동 관련
@@ -128,6 +133,11 @@ protected:
 	float HookFlightDuration = 0.f;
 	FVector HookFlightStart = FVector::ZeroVector;
 	FVector HookFlightTarget = FVector::ZeroVector;
+	
+	//발자국 타이머
+	float FootstepTimer = 0.f;
+	//Land감지
+	bool bWasGrounded = false;
 	
 	UPROPERTY()
 	AActor* GrappleActor = nullptr;

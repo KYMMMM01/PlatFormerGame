@@ -9,6 +9,8 @@
 #include "RopeGameMode.h"
 #include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
+#include "AudioLibrary.h"
+#include "Sound/SoundBase.h"
 
 
 ARopeCharacter::ARopeCharacter()
@@ -117,6 +119,16 @@ void ARopeCharacter::Tick(float DeltaTime)
 			bIsGrounded = false;
 			GrappleVelocity = FVector(0.f, 0.f, VerticalVelocity);
 			VerticalVelocity = 0.f;
+			
+			//갈고리 박히는 사운드
+			if (AudioLibrary)
+			{
+				USoundBase* Pick = FMath::RandBool() ? AudioLibrary->HookImpact_A : AudioLibrary->HookImpact_B;
+				if (Pick)
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, Pick, GrapplePoint);
+				}
+			}
 		}
 	}
 	else if (bIsGrappling)
@@ -156,6 +168,36 @@ void ARopeCharacter::Tick(float DeltaTime)
 
 	//공중 상태
 	bIsInAir = !bIsGrounded && !bIsGrappling;
+	
+	//발자국 (지상 + 일정 속도 + 로프/비행 중 아님)
+	const float FootInterval = AudioLibrary ? AudioLibrary->FootstepInterval : 0.3f;
+	if (bIsGrounded && CurrentSpeed > 50.f && !bIsGrappling && !bIsHookFlying)
+	{
+		FootstepTimer += DeltaTime;
+		if (FootstepTimer >= FootInterval)
+		{
+			FootstepTimer = 0.f;
+			if (AudioLibrary)
+			{
+				USoundBase* Pick = FMath::RandBool() ? AudioLibrary->Footstep_A : AudioLibrary->Footstep_B;
+				if (Pick)
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, Pick, GetActorLocation());
+				}
+			}
+		}
+	}
+	else
+	{
+		FootstepTimer = 0.f;
+	}
+
+	//Land 감지
+	if (!bWasGrounded && bIsGrounded && AudioLibrary && AudioLibrary->Land)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, AudioLibrary->Land, GetActorLocation());
+	}
+	bWasGrounded = bIsGrounded;
 }
 
 void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -279,6 +321,12 @@ void ARopeCharacter::StartDash(const FInputActionValue& Value)
 	DashTimeRemaining = DashDuration;
 	DashCooldownRemaining = DashCooldown;
 	DashDirection = TangentDir;
+	
+	//대쉬 사운드
+	if (AudioLibrary && AudioLibrary->Dash)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, AudioLibrary->Dash, GetActorLocation());
+	}
 }
 
 void ARopeCharacter::StopDash(const FInputActionValue& Value)
@@ -436,6 +484,12 @@ void ARopeCharacter::StartGrapple()
 		{
 			HookMesh->SetWorldLocation(HookFlightStart);
 			HookMesh->SetVisibility(true);
+		}
+		
+		//갈고리 발사 사운드
+		if (AudioLibrary && AudioLibrary->HookFire)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, AudioLibrary->HookFire, GetActorLocation());
 		}
 	}
 }

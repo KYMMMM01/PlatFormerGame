@@ -258,13 +258,13 @@ void ARopeCharacter::StartDash(const FInputActionValue& Value)
 	//액터 정면(수평)
 	FVector Forward = GetActorForwardVector();
 	Forward.Z = 0.f;
-	Forward = Forward.GetSafeNormal();
+	Forward = Forward.GetSafeNormal(); 
 	if (Forward.IsNearlyZero()) return;
 
-	//로프 방향 성분 제거 → 접선 성분만 남김 (가속 손실 없음)
+	//로프 방향 제거
 	const FVector ToChar = GetActorLocation() - GrapplePoint;
 	const FVector RopeDir = ToChar.GetSafeNormal();
-	FVector TangentDir = Forward - RopeDir * FVector::DotProduct(Forward, RopeDir);
+	FVector TangentDir = Forward - RopeDir * FVector::DotProduct(Forward, RopeDir); //DotProduct => 내적 계산
 	TangentDir = TangentDir.GetSafeNormal();
 
 	if (TangentDir.IsNearlyZero())
@@ -293,7 +293,7 @@ void ARopeCharacter::UpdateDash(float DeltaTime)
 		DashCooldownRemaining = FMath::Max(0.f, DashCooldownRemaining - DeltaTime);
 	}
 
-	//bIsDashing 플래그 만료
+	
 	if (bIsDashing)
 	{
 		DashTimeRemaining -= DeltaTime;

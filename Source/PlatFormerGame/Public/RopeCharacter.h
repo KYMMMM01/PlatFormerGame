@@ -85,7 +85,7 @@ public:
 	float GrappleTraceDistance = 2500.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float PullDuration = 0.3f;
+	float PullDuration = 1.f;
 	
 	//리스폰
 	UFUNCTION(BlueprintCallable, Category = "Game")

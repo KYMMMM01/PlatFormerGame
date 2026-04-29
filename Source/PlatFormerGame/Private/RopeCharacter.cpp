@@ -561,8 +561,8 @@ void ARopeCharacter::UpdatePull(float DeltaTime)
 		PullTime = 0.f;
 		
 		//로프 길이 갱신
-		CurrentRopeLength = FVector::Distance(GetActorLocation(), GrapplePoint);
-		
+		const float NewDistance = FVector::Distance(GetActorLocation(), GrapplePoint);
+		CurrentRopeLength = FMath::Max(NewDistance, 100.f);
 		//관성 제거
 		GrappleVelocity = FVector::ZeroVector;
 	}

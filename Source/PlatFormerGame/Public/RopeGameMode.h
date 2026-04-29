@@ -6,6 +6,7 @@
 
 class UAudioLibrary;
 class UAudioComponent;
+class ACoinActor;
 
 UENUM(BlueprintType)
 enum class ERopeGameState : uint8
@@ -82,11 +83,28 @@ public:
 	//레벨 재시작 (클리어/게임오버 화면에서 버튼으로 호출)
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void RestartLevel();
- 
+	
 	//UI가 구독할 수 있는 이벤트
 	UPROPERTY(BlueprintAssignable, Category = "UI")
 	FOnGameStateChangedSignature OnGameStateChanged;
- 
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
+	float TimeLimit = 60.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	float TimeRemaining = 0.f;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	int32 TotalCoins = 0;
+
+	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	int32 CollectedCoins = 0;
+	
+	void OnCoinCollected(const FVector& CoinLocation);
+	
 protected:
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaTime) override;
+	
+	bool bIsTimmerRunning = false;
 };

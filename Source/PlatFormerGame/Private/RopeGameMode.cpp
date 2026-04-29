@@ -7,12 +7,16 @@
 #include "AudioLibrary.h"
 #include "Components/AudioComponent.h"
 #include "Sound/SoundBase.h"
+#include "CoinActor.h"
+
 
  
 ARopeGameMode::ARopeGameMode()
 {
 	DefaultPawnClass = ARopeCharacter::StaticClass();
 	PlayerControllerClass = ARopePlayerController::StaticClass();
+	
+	PrimaryActorTick.bCanEverTick = true;
 }
  
 void ARopeGameMode::BeginPlay()
@@ -38,8 +42,31 @@ void ARopeGameMode::BeginPlay()
  
 	CurrentState = ERopeGameState::Playing;
 	OnGameStateChanged.Broadcast(CurrentState);
+	
+	TArray<AActor*> Coins;
+	UGameplayStatics::GetAllActorsOfClass(GetWorld(), ACoinActor::StaticClass(), Coins);
+	TotalCoins = Coins.Num();
+	CollectedCoins = 0;
+	
+	TimeRemaining = TimeLimit;
+	bIsTimmerRunning = (TimeLimit > 0.0f);
 }
  
+void ARopeGameMode::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	if (!bIsTimmerRunning) return;
+	if (CurrentState != ERopeGameState::Playing) return;
+	
+	TimeRemaining -= DeltaTime;
+	if (TimeRemaining <= 0.0f)
+	{
+		TimeRemaining = 0.0f;
+		bIsTimmerRunning = false;
+		OnPlayerFell();
+	}
+}
 void ARopeGameMode::OnLevelCleared()
 {
 	if (CurrentState != ERopeGameState::Playing) return;
@@ -116,3 +143,24 @@ void ARopeGameMode::RestartLevel()
 	//현재 레벨 재시작
 	UGameplayStatics::OpenLevel(this, FName(*UGameplayStatics::GetCurrentLevelName(this, true)));
 }
+
+void ARopeGameMode::OnCoinCollected(const FVector& CoinLocation)
+{
+	if  (CurrentState != ERopeGameState::Playing) return;
+	
+	CollectedCoins++;
+	
+	//사운드 추가
+	if (AudioLibrary && AudioLibrary->Coin)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, AudioLibrary->Coin, CoinLocation);
+	}
+	
+	//코인 전부 모으면 => 클리어
+	if (CollectedCoins >= TotalCoins && TotalCoins > 0)
+	{
+		bIsTimmerRunning = false;
+		OnLevelCleared();
+	}
+}
+

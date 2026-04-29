@@ -28,6 +28,8 @@ class PLATFORMERGAME_API UAudioLibrary : public UDataAsset
 	TObjectPtr<USoundBase> Land = nullptr;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GameFlow")
+	TObjectPtr<USoundBase> Coin = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GameFlow")
 	TObjectPtr<USoundBase> GameOver = nullptr;
 	
 	//BGM

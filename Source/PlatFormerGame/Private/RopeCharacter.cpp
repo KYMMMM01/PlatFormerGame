@@ -92,11 +92,11 @@ void ARopeCharacter::Tick(float DeltaTime)
 	{
 		//갈고리 비행 단계
 		HookFlightTime += DeltaTime;
-		const float Alpha = (HookFlightDuration > KINDA_SMALL_NUMBER)
+		const float Progress = (HookFlightDuration > KINDA_SMALL_NUMBER)
 			? FMath::Clamp(HookFlightTime / HookFlightDuration, 0.f, 1.f)
 			: 1.f;
 
-		const FVector CurrentHookPos = FMath::Lerp(HookFlightStart, HookFlightTarget, Alpha);
+		const FVector CurrentHookPos = FMath::Lerp(HookFlightStart, HookFlightTarget, Progress);
 
 		if (HookMesh)
 		{
@@ -112,7 +112,7 @@ void ARopeCharacter::Tick(float DeltaTime)
 		ApplyGravity(DeltaTime);
 
 		//도착 => 그래플 모드로 전환
-		if (Alpha >= 1.f)
+		if (Progress >= 1.f)
 		{
 			bIsHookFlying = false;
 			bIsGrappling = true;
@@ -133,7 +133,14 @@ void ARopeCharacter::Tick(float DeltaTime)
 	}
 	else if (bIsGrappling)
 	{
-		ApplyGrapplePhysics(DeltaTime);
+		if (bIsPulling)
+		{
+			UpdatePull(DeltaTime);
+		}
+		else
+		{
+			ApplyGrapplePhysics(DeltaTime);
+		}
 
 		UpdateRopeVisual(HandLoc, GrapplePoint);
 
@@ -230,6 +237,10 @@ void ARopeCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			{
 				EnhancedInput->BindAction(PlayerController->IA_Grapple, ETriggerEvent::Started, this, &ARopeCharacter::StartGrapple);
 				EnhancedInput->BindAction(PlayerController->IA_Grapple, ETriggerEvent::Completed, this, &ARopeCharacter::StopGrapple);
+			}
+			if (PlayerController->IA_Pull)
+			{
+				EnhancedInput->BindAction(PlayerController->IA_Pull, ETriggerEvent::Started, this, &ARopeCharacter::StartPull);
 			}
 		}
 	}
@@ -422,6 +433,10 @@ void ARopeCharacter::Respawn(const FVector& NewLocation)
 	HookFlightDuration = 0.f;
 	HookFlightStart = FVector::ZeroVector;
 	HookFlightTarget = FVector::ZeroVector;
+	
+	bIsPulling = false;
+	PullTime = 0.f;
+	PullStartLocation = FVector::ZeroVector;
 
 	if (RopeMesh)
 	{
@@ -512,9 +527,45 @@ void ARopeCharacter::StopGrapple()
 
 	GrappleActor = nullptr;
 	GrappleLocalOffset = FVector::ZeroVector;
+	
+	bIsPulling = false;
+	PullTime = 0.f;
 
 	if (RopeMesh) RopeMesh->SetVisibility(false);
 	if (HookMesh) HookMesh->SetVisibility(false);
+}
+
+void ARopeCharacter::StartPull(const FInputActionValue& Value)
+{
+	if (!bIsGrappling || bIsPulling) return;
+	
+	bIsPulling = true;
+	PullDuration = 0.f;
+	PullStartLocation = GetActorLocation();
+}
+
+void ARopeCharacter::UpdatePull(float DeltaTime)
+{
+	PullTime += DeltaTime;
+	
+	const float Progress = (PullDuration > KINDA_SMALL_NUMBER) ? FMath::Clamp(PullTime / PullDuration, 0.f, 1.f) : 1.f;
+	
+	const FVector PullLoc =  FMath::Lerp(PullStartLocation, GrapplePoint, Progress);
+	
+	FHitResult Hit;
+	SetActorLocation(PullLoc, true, &Hit);
+	
+	if (Hit.bBlockingHit || Progress > 1.f)
+	{
+		bIsPulling = false;
+		PullTime = 0.f;
+		
+		//로프 길이 갱신
+		CurrentRopeLength = FVector::Distance(GetActorLocation(), GrapplePoint);
+		
+		//관성 제거
+		GrappleVelocity = FVector::ZeroVector;
+	}
 }
 
 //스윙

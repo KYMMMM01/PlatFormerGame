@@ -84,6 +84,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float GrappleTraceDistance = 2500.f;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
+	float PullDuration = 0.3f;
+	
 	//리스폰
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void Respawn(const FVector& NewLocation);
@@ -134,6 +137,11 @@ protected:
 	FVector HookFlightStart = FVector::ZeroVector;
 	FVector HookFlightTarget = FVector::ZeroVector;
 	
+	//끌어 당기기 상태
+	bool bIsPulling = false;
+	float PullTime = 0.f;
+	FVector PullStartLocation = FVector::ZeroVector;
+	
 	//발자국 타이머
 	float FootstepTimer = 0.f;
 	//Land감지
@@ -175,4 +183,9 @@ protected:
 	void StopGrapple();
 	UFUNCTION()
 	void ApplyGrapplePhysics(float DeltaTime);
+	
+	UFUNCTION()
+	void StartPull(const FInputActionValue& Value);
+	UFUNCTION()
+	void UpdatePull(float DeltaTime);
 };

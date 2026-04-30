@@ -60,6 +60,9 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UUserWidget* ClearWidget = nullptr;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
+	FText StageInstruction;
+	
 	//오디오 라이브러리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	TObjectPtr<UAudioLibrary> AudioLibrary = nullptr;

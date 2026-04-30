@@ -32,6 +32,9 @@ class PLATFORMERGAME_API UAudioLibrary : public UDataAsset
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GameFlow")
 	TObjectPtr<USoundBase> GameOver = nullptr;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Environment")
+	TObjectPtr<USoundBase> Lava = nullptr;
+	
 	//BGM
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM")
 	TObjectPtr<USoundBase> Title = nullptr;

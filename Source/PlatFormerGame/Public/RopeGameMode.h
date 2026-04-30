@@ -60,6 +60,11 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = "UI")
 	UUserWidget* ClearWidget = nullptr;
 	
+	//마지막 스테이지
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
+	bool bIsLastStage = false;
+	
+	//스테이지 설명
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
 	FText StageInstruction;
 	
@@ -94,13 +99,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stage")
 	float TimeLimit = 60.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stage")
 	float TimeRemaining = 0.f;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	UPROPERTY(VisibleAnywhere ,BlueprintReadOnly, Category = "Stage")
 	int32 TotalCoins = 0;
 
-	UPROPERTY(BlueprintReadOnly, Category = "Stage")
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Stage")
 	int32 CollectedCoins = 0;
 	
 	void OnCoinCollected(const FVector& CoinLocation);

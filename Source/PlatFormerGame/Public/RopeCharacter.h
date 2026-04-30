@@ -82,7 +82,7 @@ public:
 	float RopeMinLength = 500.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
-	float GrappleTraceDistance = 2500.f;
+	float GrappleTraceDistance = 2700.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Movement")
 	float PullDuration = 1.f;

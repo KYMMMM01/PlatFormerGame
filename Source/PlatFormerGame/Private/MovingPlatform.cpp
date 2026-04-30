@@ -15,6 +15,7 @@ void AMovingPlatform::BeginPlay()
 	Super::BeginPlay();
 	
 	StartLocation = GetActorLocation();
+	BaseRotation = GetActorRotation();
 }
 
 void AMovingPlatform::Tick(float DeltaTime)
@@ -29,7 +30,7 @@ void AMovingPlatform::Tick(float DeltaTime)
 	
 	const float DistFromStart = FVector::DotProduct(NewLocation - StartLocation, Dir);
 	
-	// 범위
+	//범위
 	if (FMath::Abs(DistFromStart) >= MaxRange)
 	{
 		const float ClampedDist = FMath::Sign(DistFromStart) * MaxRange;
@@ -40,5 +41,15 @@ void AMovingPlatform::Tick(float DeltaTime)
 	{
 		SetActorLocation(NewLocation);
 	}
+	
+	FRotator Rotation = BaseRotation;
+	if (DirectionSign < 0)
+	{
+		Rotation.Yaw += 180.f;
+	}
+	
+	const FRotator CurrentRotation = GetActorRotation();
+	const FRotator NewRotation = FMath::RInterpTo(CurrentRotation, Rotation, DeltaTime, TurnSpeed); //RInterpTo = 매 프레임 현재 회전
+	SetActorRotation(NewRotation);
 }
 

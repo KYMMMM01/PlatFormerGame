@@ -34,18 +34,12 @@ void ACoinActor::Tick(float DeltaTime)
 void ACoinActor::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	UE_LOG(LogTemp, Warning, TEXT(">>> Coin OnOverlapBegin called! Other=%s"),
-		OtherActor ? *OtherActor->GetName() : TEXT("NULL"));
 	
 	if (!Cast<ARopeCharacter>(OtherActor)) return;
 	
 	if (ARopeGameMode* GM = Cast<ARopeGameMode>(UGameplayStatics::GetGameMode(this)))
 	{
 		GM->OnCoinCollected(GetActorLocation());
-	}
-	else
-	{
-		UE_LOG(LogTemp, Warning, TEXT(">>> Cast to ARopeGameMode FAILED"));
 	}
 	
 	Destroy();

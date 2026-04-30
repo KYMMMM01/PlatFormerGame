@@ -40,6 +40,11 @@ class PLATFORMERGAME_API UAudioLibrary : public UDataAsset
 	TObjectPtr<USoundBase> Title = nullptr;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM")
 	TObjectPtr<USoundBase> ClearBGM = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM")
+	TObjectPtr<USoundBase> Stage2BGM = nullptr;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "BGM")
+	TObjectPtr<USoundBase> Stage1BGM = nullptr;
+	
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Tuning")
 	float FootstepInterval = 0.3f;

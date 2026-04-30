@@ -71,11 +71,18 @@ public:
 	//오디오 라이브러리
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
 	TObjectPtr<UAudioLibrary> AudioLibrary = nullptr;
-
+	
+	UPROPERTY()
+	TObjectPtr<UAudioComponent> StageBGMComp = nullptr;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Audio")
+	TObjectPtr<USoundBase> StageBGM = nullptr;
+	
 	//클리어 BGM 재생 컴포넌트
 	UPROPERTY()
 	TObjectPtr<UAudioComponent> ClearBGMComp = nullptr;
- 
+	
+	
 	//골 지점 도달 시 호출
 	UFUNCTION(BlueprintCallable, Category = "Game")
 	void OnLevelCleared();

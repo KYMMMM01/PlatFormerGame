@@ -9,8 +9,6 @@
 #include "Sound/SoundBase.h"
 #include "CoinActor.h"
 
-
- 
 ARopeGameMode::ARopeGameMode()
 {
 	DefaultPawnClass = ARopeCharacter::StaticClass();
@@ -50,7 +48,13 @@ void ARopeGameMode::BeginPlay()
 	
 	TimeRemaining = TimeLimit;
 	bIsTimmerRunning = (TimeLimit > 0.0f);
+	
+	if (StageBGM)
+	{
+		StageBGMComp = UGameplayStatics::SpawnSound2D(this, StageBGM);
+	}
 }
+
  
 void ARopeGameMode::Tick(float DeltaTime)
 {
@@ -86,11 +90,16 @@ void ARopeGameMode::OnLevelCleared()
 			}
 		}
 		
+		if (StageBGMComp && StageBGMComp->IsPlaying())
+		{
+			StageBGMComp->FadeOut(0.5f, 0.f);
+		}
+		
 		if (AudioLibrary && AudioLibrary->ClearBGM)
 		{
 			ClearBGMComp = UGameplayStatics::SpawnSound2D(this, AudioLibrary->ClearBGM);
 		}
- 
+	
 		//입력 비활성
 		PC->SetPause(true);
 		PC->bShowMouseCursor = true;
@@ -115,6 +124,11 @@ void ARopeGameMode::OnPlayerFell()
 			{
 				GameOverWidget->AddToViewport();
 			}
+		}
+		
+		if (StageBGMComp && StageBGMComp->IsPlaying())
+		{
+			StageBGMComp->FadeOut(0.5f, 0.f);
 		}
  		
  		if (AudioLibrary && AudioLibrary->GameOver)
